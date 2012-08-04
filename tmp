@@ -1,0 +1,19 @@
+08-04 12:30:06.140: D/CosmicRayDetector(10640): Timestamp is :1344076206132   nmea is :$GPGSV,4,3,16,25,34,257,,27,51,118,,29,07,198,,32,,,*4D
+08-04 12:30:06.150: D/CosmicRayDetector(10640): Nmea Received :
+08-04 12:30:06.150: D/CosmicRayDetector(10640): Timestamp is :1344076206152   nmea is :$GPGSV,4,4,16,31,,,,30,,,,28,,,,26,,,*71
+08-04 12:30:06.180: I/CosmicRayDetector(10640): 46, 6
+08-04 12:30:06.190: D/CosmicRayDetector(10640): Nmea Received :
+08-04 12:30:06.190: D/CosmicRayDetector(10640): Timestamp is :1344076206191   nmea is :$GPGGA,,,,,,0,,,,,,,,*66
+08-04 12:30:06.200: D/CosmicRayDetector(10640): Nmea Received :
+08-04 12:30:06.200: D/CosmicRayDetector(10640): Timestamp is :1344076206203   nmea is :$GPVTG,,T,,M,,N,,K,N*2C
+08-04 12:30:06.210: D/CosmicRayDetector(10640): Nmea Received :
+08-04 12:30:06.210: D/CosmicRayDetector(10640): Timestamp is :1344076206216   nmea is :$GPRMC,,V,,,,,,,,,,N*53
+08-04 12:30:06.230: D/CosmicRayDetector(10640): Nmea Received :
+08-04 12:30:06.230: D/CosmicRayDetector(10640): Timestamp is :1344076206231   nmea is :$GPGSA,A,1,,,,,,,,,,,,,,,*1E
+08-04 12:30:06.280: I/CosmicRayDetector(10640): 46, 6
+08-04 12:30:06.380: I/CosmicRayDetector(10640): 46, 6
+08-04 12:30:06.480: I/CosmicRayDetector(10640): 46, 6
+08-04 12:30:06.590: I/CosmicRayDetector(10640): 46, 6
+08-04 12:30:06.681: I/CosmicRayDetector(10640): 46, 6
+08-04 12:30:06.781: I/CosmicRayDetector(10640): 46, 6
+

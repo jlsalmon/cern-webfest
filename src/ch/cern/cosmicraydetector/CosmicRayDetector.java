@@ -25,30 +25,45 @@ import java.io.IOException;
 import org.microbridge.server.AbstractServerListener;
 import org.microbridge.server.Server;
 
-import android.view.View;
-import android.view.Window;
-import android.view.View.OnClickListener;
 import android.app.Activity;
+import android.content.Intent;
+import android.location.Criteria;
+import android.location.GpsStatus.NmeaListener;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
+import android.provider.Settings;
 import android.util.Log;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.Window;
+import android.widget.Button;
 import android.widget.SeekBar;
 import android.widget.TextView;
-import android.widget.Button;
 
-public class CosmicRayDetector extends Activity implements OnClickListener {
+public class CosmicRayDetector extends Activity implements OnClickListener,
+		LocationListener {
+
 	private int adcSensorValue = 10;
+	private static final String TAG = "CosmicRayDetector";
 
 	// UI Widgets
-	TextView tvAdcvalue;
-	SeekBar sbAdcValue;
-	Button bOutPutLED;
+	private TextView tvAdcvalue;
+	private SeekBar sbAdcValue;
+	private Button bOutPutLED;
 
-	boolean LEDState = false; // initially OFF
+	private boolean LEDState = false; // initially OFF
 
 	// Create TCP server (based on MicroBridge LightWeight Server).
 	// Note: This Server runs in a separate thread.
-	Server server = null;
+	private Server server = null;
+	private Handler mHandler;
+
+	private LocationManager service;
+	private String provider;
 
 	/** Called when the activity is first created. */
 	@Override
@@ -61,6 +76,76 @@ public class CosmicRayDetector extends Activity implements OnClickListener {
 		bOutPutLED.setOnClickListener(this);
 
 		// Create TCP server (based on MicroBridge LightWeight Server)
+		this.initTcpServer();
+
+		this.initLocationService();
+
+		/* Poll every 10 seconds and generate a timestamp */
+		this.pollLocation(100);
+
+	}
+
+	private void pollLocation(final int delay) {
+		mHandler = new Handler();
+
+		new Thread(new Runnable() {
+			public void run() {
+				while (true) {
+					try {
+						Thread.sleep(delay);
+						mHandler.post(new Runnable() {
+
+							public void run() {
+
+								Location location = service
+										.getLastKnownLocation(provider);
+
+								if (location != null) {
+									onLocationChanged(location);
+								} else {
+									System.out
+											.println("Location not available");
+								}
+							}
+						});
+					} catch (Exception e) {
+						// TODO: handle exception
+					}
+				}
+			}
+		}).start();
+	}
+
+	private void initLocationService() {
+		service = (LocationManager) getSystemService(LOCATION_SERVICE);
+		service.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1l, 1l,
+				this);
+
+		service.addNmeaListener(new NmeaListener() {
+			public void onNmeaReceived(long timestamp, String nmea) {
+				Log.d(TAG, "Nmea Received :");
+				Log.d(TAG, "Timestamp is :" + timestamp + "   nmea is :" + nmea);
+			}
+		});
+
+		boolean enabled = service
+				.isProviderEnabled(LocationManager.GPS_PROVIDER);
+
+		// Check if enabled and if not send user to the
+		// GSP settings
+		// Better solution would be to display a dialog
+		// and suggesting to
+		// go to the settings
+		if (!enabled) {
+			Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+			startActivity(intent);
+		}
+
+		provider = service.getBestProvider(new Criteria(), false);
+	}
+
+	private void initTcpServer() {
+
 		try {
 			server = new Server(4568); // Use the same port number used in ADK
 										// Main Board firmware
@@ -93,8 +178,7 @@ public class CosmicRayDetector extends Activity implements OnClickListener {
 			}
 
 		});
-
-	} // End of TCP Server code
+	}
 
 	// UpdateData Asynchronously sends the value received from ADK Main Board.
 	// This is triggered by onReceive()
@@ -149,6 +233,28 @@ public class CosmicRayDetector extends Activity implements OnClickListener {
 		} catch (IOException e) {
 			Log.e("CosmicRayDetector ADK", "problem sending TCP message", e);
 		}
+
+	}
+
+	public void onLocationChanged(Location location) {
+		long lat = (long) (location.getLatitude());
+		long lng = (long) (location.getLongitude());
+
+		Log.i(TAG, lat + ", " + lng);
+	}
+
+	public void onProviderDisabled(String provider) {
+		// TODO Auto-generated method stub
+
+	}
+
+	public void onProviderEnabled(String provider) {
+		// TODO Auto-generated method stub
+
+	}
+
+	public void onStatusChanged(String provider, int status, Bundle extras) {
+		// TODO Auto-generated method stub
 
 	}
 

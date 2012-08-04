@@ -84,6 +84,7 @@ public class Server
 	{
 		keepAlive = true;
 		serverSocket = new ServerSocket(port);
+		serverSocket.setReuseAddress(true);
 		
 		(listenThread = new Thread(){
 			public void run()
@@ -97,7 +98,7 @@ public class Server
 						try {
 
 							socket = serverSocket.accept();
-
+							
 							// Create Client object.
 							Client client = new Client(Server.this, socket);
 							clients.add(client);
