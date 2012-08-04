@@ -32,7 +32,6 @@ import android.location.GpsStatus.NmeaListener;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.Settings;
@@ -43,6 +42,8 @@ import android.view.Window;
 import android.widget.Button;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import java.util.*;
+import java.text.*;
 
 public class CosmicRayDetector extends Activity implements OnClickListener,
 		LocationListener {
@@ -60,6 +61,9 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 	private Handler mHandler;
 
 	private LocationManager service;
+	private double lat;
+	private double lng;
+	private String nmeaTimestamp;
 	private String provider;
 
 	/** Called when the activity is first created. */
@@ -118,7 +122,23 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 
 		service.addNmeaListener(new NmeaListener() {
 			public void onNmeaReceived(long timestamp, String nmea) {
-				Log.d(TAG, "timestamp: " + timestamp + "   nmea: " + nmea);
+
+				if (nmea.contains("GPGGA")) {
+					String x = nmea.split(",")[1];
+					nmeaTimestamp = x.substring(0, 2) + ":" + x.substring(2, 4)
+							+ ":" + x.substring(4, 6);
+
+					SimpleDateFormat datefmt = new SimpleDateFormat(
+							"dd/MM/yy");
+					NumberFormat numfmt = new DecimalFormat("+#;-#");
+
+					nmeaTimestamp = (String) datefmt.format(new Date()).toString()
+							+ " " + nmeaTimestamp + " 00100 "
+							+ numfmt.format((lat * 3600000)) + " "
+							+ numfmt.format((lng * 3600000))
+							+ " altitude frac";
+					System.out.println(nmeaTimestamp);
+				}
 			}
 		});
 
@@ -167,22 +187,26 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 				 */
 				runOnUiThread(new Runnable() {
 					public void run() {
-						
+
 						SeekBar sbAdcValue = (SeekBar) findViewById(R.id.sbADCValue);
 						sbAdcValue.setProgress(adcSensorValue);
-						
-						TextView tvAdcvalue = (TextView) findViewById(R.id.tvADCValue);
-						tvAdcvalue.setText(String.valueOf(adcSensorValue));
-						
-						
-						//new UpdateData().execute(adcSensorValue);
 
+						TextView tvAdcvalue = (TextView) findViewById(R.id.tvADCValue);
+						String s = "timestamp: " + nmeaTimestamp + " value: "
+								+ String.valueOf(adcSensorValue) + "\n";
+						tvAdcvalue.append(s);
+
+						resetADKCounter();
 					}
 				});
 
 			}
 
 		});
+	}
+
+	public void resetADKCounter() {
+
 	}
 
 	/* Called when the LED button is clicked */
@@ -210,10 +234,10 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 	}
 
 	public void onLocationChanged(Location location) {
-		double lat = (location.getLatitude());
-		double lng = (location.getLongitude());
+		lat = (location.getLatitude());
+		lng = (location.getLongitude());
 
-		Log.i(TAG, lat + ", " + lng);
+		//Log.i(TAG, lat + ", " + lng);
 	}
 
 	public void onProviderDisabled(String provider) {
