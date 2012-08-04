@@ -50,15 +50,12 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 	private int adcSensorValue = 10;
 	private static final String TAG = "CosmicRayDetector";
 
-	// UI Widgets
 	private TextView tvAdcvalue;
 	private SeekBar sbAdcValue;
 	private Button bOutPutLED;
 
 	private boolean LEDState = false; // initially OFF
 
-	// Create TCP server (based on MicroBridge LightWeight Server).
-	// Note: This Server runs in a separate thread.
 	private Server server = null;
 	private Handler mHandler;
 
@@ -75,13 +72,13 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 		bOutPutLED = (Button) findViewById(R.id.buttonOuputLED);
 		bOutPutLED.setOnClickListener(this);
 
-		// Create TCP server (based on MicroBridge LightWeight Server)
+		/* Create TCP server (based on MicroBridge LightWeight Server) */
 		this.initTcpServer();
 
 		this.initLocationService();
 
 		/* Poll every 10 seconds and generate a timestamp */
-		this.pollLocation(100);
+		this.pollLocation(1000);
 
 	}
 
@@ -93,26 +90,24 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 				while (true) {
 					try {
 						Thread.sleep(delay);
-						mHandler.post(new Runnable() {
-
-							public void run() {
-
-								Location location = service
-										.getLastKnownLocation(provider);
-
-								if (location != null) {
-									onLocationChanged(location);
-								} else {
-									System.out
-											.println("Location not available");
-								}
-							}
-						});
+						mHandler.post(getLocation());
 					} catch (Exception e) {
 						// TODO: handle exception
 					}
 				}
 			}
+
+			private Runnable getLocation() {
+				Location location = service.getLastKnownLocation(provider);
+
+				if (location != null) {
+					onLocationChanged(location);
+				} else {
+					Log.w(TAG, "Location not available");
+				}
+				return null;
+			}
+
 		}).start();
 	}
 
@@ -123,19 +118,18 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 
 		service.addNmeaListener(new NmeaListener() {
 			public void onNmeaReceived(long timestamp, String nmea) {
-				Log.d(TAG, "Nmea Received :");
-				Log.d(TAG, "Timestamp is :" + timestamp + "   nmea is :" + nmea);
+				Log.d(TAG, "timestamp: " + timestamp + "   nmea: " + nmea);
 			}
 		});
 
 		boolean enabled = service
 				.isProviderEnabled(LocationManager.GPS_PROVIDER);
 
-		// Check if enabled and if not send user to the
-		// GSP settings
-		// Better solution would be to display a dialog
-		// and suggesting to
-		// go to the settings
+		/*
+		 * Check if enabled and if not send user to the GSP settings. A better
+		 * solution would be to display a dialog and suggesting to go to the
+		 * settings
+		 */
 		if (!enabled) {
 			Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
 			startActivity(intent);
@@ -147,8 +141,10 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 	private void initTcpServer() {
 
 		try {
-			server = new Server(4568); // Use the same port number used in ADK
-										// Main Board firmware
+			/*
+			 * Use the same port number used in ADK Main Board firmware
+			 */
+			server = new Server(4568);
 			server.start();
 		} catch (IOException e) {
 			Log.e("CosmicRayDetector ADK", "Unable to start TCP server", e);
@@ -165,12 +161,21 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 					return;
 				adcSensorValue = (data[0] & 0xff) | ((data[1] & 0xff) << 8);
 
-				// Any update to UI can not be carried out in a non UI thread
-				// like the one used
-				// for Server. Hence runOnUIThread is used.
+				/*
+				 * Any update to UI can not be carried out in a non UI thread
+				 * like the one used for Server. Hence runOnUIThread is used.
+				 */
 				runOnUiThread(new Runnable() {
 					public void run() {
-						new UpdateData().execute(adcSensorValue);
+						
+						SeekBar sbAdcValue = (SeekBar) findViewById(R.id.sbADCValue);
+						sbAdcValue.setProgress(adcSensorValue);
+						
+						TextView tvAdcvalue = (TextView) findViewById(R.id.tvADCValue);
+						tvAdcvalue.setText(String.valueOf(adcSensorValue));
+						
+						
+						//new UpdateData().execute(adcSensorValue);
 
 					}
 				});
@@ -180,29 +185,32 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 		});
 	}
 
-	// UpdateData Asynchronously sends the value received from ADK Main Board.
-	// This is triggered by onReceive()
+	/*
+	 * UpdateData Asynchronously sends the value received from ADK Main Board.
+	 * This is triggered by onReceive()
+	 */
 	class UpdateData extends AsyncTask<Integer, Integer, String> {
-		// Called to initiate the background activity
+		/* Called to initiate the background activity */
 		@Override
 		protected String doInBackground(Integer... sensorValue) {
 
-			// Init SeeekBar Widget to display ADC sensor value in SeekBar
-			// Max value of SeekBar is set to 1024
+			/*
+			 * Init SeeekBar Widget to display ADC sensor value in SeekBar Max
+			 * value of SeekBar is set to 1024
+			 */
 			SeekBar sbAdcValue = (SeekBar) findViewById(R.id.sbADCValue);
 			sbAdcValue.setProgress(sensorValue[0]);
 			return (String.valueOf(sensorValue[0])); // This goes to result
 
 		}
 
-		// Called when there's a status to be updated
+		/* Called when there's a status to be updated - Not used in this case */
 		@Override
 		protected void onProgressUpdate(Integer... values) {
 			super.onProgressUpdate(values);
-			// Not used in this case
 		}
 
-		// Called once the background activity has completed
+		/* Called once the background activity has completed */
 		@Override
 		protected void onPostExecute(String result) {
 			// Init TextView Widget to display ADC sensor value in numeric.
@@ -212,11 +220,11 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 		}
 	}
 
-	// Called when the LED button is clicked
+	/* Called when the LED button is clicked */
 	public void onClick(View v) {
 		byte data;
 
-		// Toggle the state of LED
+		/* Toggle the state of LED */
 		if (LEDState == true) {
 			LEDState = false;
 			data = 0;
@@ -228,7 +236,7 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 		}
 
 		try {
-			// Send the state of LED to ADK Main Board as a byte
+			/* Send the state of LED to ADK Main Board as a byte */
 			server.send(new byte[] { (byte) data });
 		} catch (IOException e) {
 			Log.e("CosmicRayDetector ADK", "problem sending TCP message", e);
@@ -237,8 +245,8 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 	}
 
 	public void onLocationChanged(Location location) {
-		long lat = (long) (location.getLatitude());
-		long lng = (long) (location.getLongitude());
+		double lat = (location.getLatitude());
+		double lng = (location.getLongitude());
 
 		Log.i(TAG, lat + ", " + lng);
 	}
