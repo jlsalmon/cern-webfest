@@ -185,41 +185,6 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 		});
 	}
 
-	/*
-	 * UpdateData Asynchronously sends the value received from ADK Main Board.
-	 * This is triggered by onReceive()
-	 */
-	class UpdateData extends AsyncTask<Integer, Integer, String> {
-		/* Called to initiate the background activity */
-		@Override
-		protected String doInBackground(Integer... sensorValue) {
-
-			/*
-			 * Init SeeekBar Widget to display ADC sensor value in SeekBar Max
-			 * value of SeekBar is set to 1024
-			 */
-			SeekBar sbAdcValue = (SeekBar) findViewById(R.id.sbADCValue);
-			sbAdcValue.setProgress(sensorValue[0]);
-			return (String.valueOf(sensorValue[0])); // This goes to result
-
-		}
-
-		/* Called when there's a status to be updated - Not used in this case */
-		@Override
-		protected void onProgressUpdate(Integer... values) {
-			super.onProgressUpdate(values);
-		}
-
-		/* Called once the background activity has completed */
-		@Override
-		protected void onPostExecute(String result) {
-			// Init TextView Widget to display ADC sensor value in numeric.
-			TextView tvAdcvalue = (TextView) findViewById(R.id.tvADCValue);
-			tvAdcvalue.setText(String.valueOf(result));
-
-		}
-	}
-
 	/* Called when the LED button is clicked */
 	public void onClick(View v) {
 		byte data;
