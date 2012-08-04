@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="vertical" >
+
+    <TextView
+        android:id="@+id/tvADCValue"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_margin="5dp"
+        android:layout_weight="6"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:text="@string/tvText"
+        android:textSize="100sp"
+        android:textStyle="bold" >
+    </TextView>
+
+    <SeekBar
+        android:id="@+id/sbADCValue"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:max="1024"
+        android:progress="0"
+        android:visibility="visible" >
+    </SeekBar>
+
+    <Button
+        android:id="@+id/buttonOuputLED"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_weight=".5"
+        android:text="@string/buttonLED" >
+    </Button>
+
+    <LinearLayout
+        android:id="@+id/linearLayout1"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="horizontal" >
+
+        <TextView
+            android:id="@+id/tvCaption"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:layout_marginLeft="10sp"
+            android:layout_weight="10"
+            android:text="CosmicRayDetector ADK"
+            android:textSize="24sp"
+            android:textStyle="bold" >
+        </TextView>
+    </LinearLayout>
+
+</LinearLayout>

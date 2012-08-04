@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CosmicRayDetector ADK</string>
+    <string name="buttonLED">LED Off</string>
+    <string name="tvText">0</string>
+</resources>
