@@ -18,9 +18,11 @@
             android:layout_gravity="bottom"
             android:layout_margin="5dp"
             android:ellipsize="end"
+            android:maxLines="500"
             android:text="@string/tvText"
             android:textSize="12sp"
             android:textStyle="bold" />
+
     </ScrollView>
 
     <SeekBar

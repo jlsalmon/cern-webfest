@@ -21,7 +21,21 @@
 package ch.cern.cosmicraydetector;
 
 import java.io.IOException;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.message.BasicNameValuePair;
 import org.microbridge.server.AbstractServerListener;
 import org.microbridge.server.Server;
 
@@ -42,18 +56,18 @@ import android.view.Window;
 import android.widget.Button;
 import android.widget.SeekBar;
 import android.widget.TextView;
-import java.util.*;
-import java.text.*;
+import android.widget.Toast;
 
 public class CosmicRayDetector extends Activity implements OnClickListener,
 		LocationListener {
 
-	private int adcSensorValue = 10;
+	private int adcSensorValue = 0;
 	private static final String TAG = "CosmicRayDetector";
 
 	private TextView tvAdcvalue;
 	private SeekBar sbAdcValue;
 	private Button bOutPutLED;
+	private TextView fixView;
 
 	private boolean LEDState = false; // initially OFF
 
@@ -64,6 +78,8 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 	private double lat;
 	private double lng;
 	private String nmeaTimestamp;
+	private String eventTime;
+	private double fraction;
 	private String provider;
 
 	/** Called when the activity is first created. */
@@ -73,6 +89,7 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		setContentView(R.layout.main);
 
+		fixView = (TextView) findViewById(R.id.tvCaption);
 		bOutPutLED = (Button) findViewById(R.id.buttonOuputLED);
 		bOutPutLED.setOnClickListener(this);
 
@@ -82,11 +99,11 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 		this.initLocationService();
 
 		/* Poll every 10 seconds and generate a timestamp */
-		this.pollLocation(1000);
+		this.pollArduino(1000);
 
 	}
 
-	private void pollLocation(final int delay) {
+	private void pollArduino(final int delay) {
 		mHandler = new Handler();
 
 		new Thread(new Runnable() {
@@ -94,21 +111,22 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 				while (true) {
 					try {
 						Thread.sleep(delay);
-						mHandler.post(getLocation());
+						mHandler.post(resetArduinoCounter());
 					} catch (Exception e) {
 						// TODO: handle exception
 					}
 				}
 			}
 
-			private Runnable getLocation() {
-				Location location = service.getLastKnownLocation(provider);
+			private Runnable resetArduinoCounter() {
 
-				if (location != null) {
-					onLocationChanged(location);
-				} else {
-					Log.w(TAG, "Location not available");
+				byte data = '0';
+				try {
+					server.send(new byte[] { data });
+				} catch (IOException e) {
+					e.printStackTrace();
 				}
+
 				return null;
 			}
 
@@ -125,19 +143,35 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 
 				if (nmea.contains("GPGGA")) {
 					String x = nmea.split(",")[1];
-					nmeaTimestamp = x.substring(0, 2) + ":" + x.substring(2, 4)
-							+ ":" + x.substring(4, 6);
 
-					SimpleDateFormat datefmt = new SimpleDateFormat(
-							"dd/MM/yy");
+					Log.i(TAG, nmea);
+					Log.i(TAG, x);
+
+					if (x.length() > 1) {
+						eventTime = x.substring(0, 2) + ":" + x.substring(2, 4)
+								+ ":" + x.substring(4, 6);
+					}
+
+					SimpleDateFormat datefmt = new SimpleDateFormat("dd/MM/yy");
 					NumberFormat numfmt = new DecimalFormat("+#;-#");
 
-					nmeaTimestamp = (String) datefmt.format(new Date()).toString()
-							+ " " + nmeaTimestamp + " 00100 "
-							+ numfmt.format((lat * 3600000)) + " "
-							+ numfmt.format((lng * 3600000))
-							+ " altitude frac";
-					System.out.println(nmeaTimestamp);
+					nmeaTimestamp = (String) datefmt.format(new Date())
+							.toString()
+							+ " "
+							+ eventTime
+							+ " 00100 "
+							+ numfmt.format((lat * 3600000))
+							+ " "
+							+ numfmt.format((lng * 3600000)) + " " + fraction;
+
+					// Toast.makeText(getApplicationContext(), nmeaTimestamp,
+					// Toast.LENGTH_SHORT).show();
+
+					if (eventTime == null) {
+						fixView.setText("No GPS fix");
+					} else {
+						fixView.setText("GPS fix acquired");
+					}
 				}
 			}
 		});
@@ -155,7 +189,9 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 			startActivity(intent);
 		}
 
-		provider = service.getBestProvider(new Criteria(), false);
+		Criteria c = new Criteria();
+		c.setAccuracy(Criteria.ACCURACY_FINE);
+		provider = service.getBestProvider(c, false);
 	}
 
 	private void initTcpServer() {
@@ -179,7 +215,12 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 
 				if (data.length < 2)
 					return;
+
 				adcSensorValue = (data[0] & 0xff) | ((data[1] & 0xff) << 8);
+
+				if (adcSensorValue < 10000) {
+					fraction = (float) adcSensorValue * 0.000212f;
+				}
 
 				/*
 				 * Any update to UI can not be carried out in a non UI thread
@@ -188,16 +229,43 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 				runOnUiThread(new Runnable() {
 					public void run() {
 
-						SeekBar sbAdcValue = (SeekBar) findViewById(R.id.sbADCValue);
-						sbAdcValue.setProgress(adcSensorValue);
+						Toast.makeText(getApplicationContext(),
+								Integer.toString(adcSensorValue),
+								Toast.LENGTH_SHORT).show();
+
+						Location location = service
+								.getLastKnownLocation(provider);
+
+						if (location != null) {
+							onLocationChanged(location);
+						} else {
+							Log.w(TAG, "Location not available");
+						}
 
 						TextView tvAdcvalue = (TextView) findViewById(R.id.tvADCValue);
-						String s = "timestamp: " + nmeaTimestamp + " value: "
-								+ String.valueOf(adcSensorValue) + "\n";
-						tvAdcvalue.append(s);
 
-						resetADKCounter();
+						String x;
+						if (eventTime == null) {
+							x = "Event detected (no GPS info)\n";
+						} else {
+							x = "Event detected at: " + eventTime + "\n"
+									+ "\t timestamp: " + nmeaTimestamp + "\n"
+									+ "\t counter: " + adcSensorValue + "\n";
+						}
+
+						// String s = "timestamp: " + nmeaTimestamp + " value: "
+						// + String.valueOf(adcSensorValue) + "\n";
+						tvAdcvalue.append(x);
+
+						new Thread(new Runnable() {
+
+							public void run() {
+								sendDataToCosm(nmeaTimestamp);
+							}
+						}).start();
+
 					}
+
 				});
 
 			}
@@ -205,7 +273,27 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 		});
 	}
 
-	public void resetADKCounter() {
+	private void sendDataToCosm(String nmeaTimestamp) {
+		HttpClient httpclient = new DefaultHttpClient();
+		HttpPost httppost = new HttpPost(
+				"http://www.posttestserver.com/post.php?dir=populous");
+
+		try {
+			List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>(1);
+			nameValuePairs.add(new BasicNameValuePair("nmeaTimestamp",
+					nmeaTimestamp));
+			nameValuePairs.add(new BasicNameValuePair("counter", Integer
+					.toString(adcSensorValue)));
+			httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs));
+
+			// Execute HTTP Post Request
+			HttpResponse response = httpclient.execute(httppost);
+
+		} catch (ClientProtocolException e) {
+			// TODO Auto-generated catch block
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+		}
 
 	}
 
@@ -217,11 +305,9 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 		if (LEDState == true) {
 			LEDState = false;
 			data = 0;
-			bOutPutLED.setText("LED Off");
 		} else {
 			LEDState = true;
 			data = 1;
-			bOutPutLED.setText("LED On");
 		}
 
 		try {
@@ -237,7 +323,7 @@ public class CosmicRayDetector extends Activity implements OnClickListener,
 		lat = (location.getLatitude());
 		lng = (location.getLongitude());
 
-		//Log.i(TAG, lat + ", " + lng);
+		// Log.i(TAG, lat + ", " + lng);
 	}
 
 	public void onProviderDisabled(String provider) {
